@@ -11,11 +11,6 @@ mqttBroker = "mqtt.eclipseprojects.io"
 client = mqtt.Client("Admin Server")
 client.connect(mqttBroker)
 
-dicionarioClient = dict()
-dicionarioProduct = dict()
-clientArray = []
-productArray = []
-
 def startDatabase():
     db1 = plyvel.DB('../Banco/bancos/banco1/', create_if_missing=True)
     db2 = plyvel.DB('../Banco/bancos/banco2/', create_if_missing=True)
@@ -101,7 +96,6 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
         if getData(db1, str('produtoId:' + request_iterator.produtoId)):
             reply.message = 'Produto já existe!'         
         else: 
-            productArray.append([request_iterator.produtoId, request_iterator.dadosProduto])
             insertData(db1,str('produtoId:' + request_iterator.produtoId), request_iterator.dadosProduto)            
             resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
             print("Cadastro realizada:" + resp)
@@ -113,56 +107,47 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
         print("Modificar Produto")      
         reply = admin_pb2.modificarProdutoReply()
         
-        if getData(db1, str('clientId:' + request_iterator.produtoId)) == None:
+        if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
             reply.message = 'Produto não existe!'         
         else: 
             novosDados = json.loads(request_iterator.dadosProduto)
             dadosProduto = {"nome": novosDados['nome'], "quantidade": novosDados['quantidade'], "preco": novosDados['preco']}
-            dicionarioProduct[request_iterator.produtoId] = json.dumps(dadosProduto)
-            client.publish("ModificarProduto", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Modificação realizada: " + str(dicionarioProduct))
+            insertData(db1,str('produtoId:' + request_iterator.produtoId), json.dumps(dadosProduto))            
+            resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
+            print("Modificação realizada:" + resp)
             reply.message = 'Produto modificado!'
 
         return reply
     def recuperarProduto(self, request_iterator, context):
-        global dicionarioProduct
+        db1,db2,db3 = startDatabase()
         print("Recuperar Produto")
 
         reply = admin_pb2.recuperarProdutoReply()
         
-        if request_iterator.produtoId not in dicionarioProduct:
+        if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
             reply.message = 'Produto não existe!'         
         else: 
-            dadosProduto = json.loads(dicionarioProduct[request_iterator.produtoId])
-            print("Produto recuperado: " + str(dicionarioProduct))
-            reply.message = f"Produto recuperado:\nNome - {dadosProduto['nome']}\nQuantidade - {dadosProduto['quantidade']}"
+            resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
+            print("Recuperação realizada:" + resp)
+            dadosProduto = json.loads(resp)
+            reply.message = f"Produto recuperado:\nNome - {dadosProduto['nome']}\nQuantidade - {dadosProduto['quantidade']}\nPreço - {dadosProduto['preco']}"
 
         return reply
     def apagarProduto(self, request_iterator, context):
-        global dicionarioProduct
+        db1,db2,db3 = startDatabase()
         print("Apagar Produto")
 
         reply = admin_pb2.apagarProdutoReply()
         
-        if request_iterator.produtoId not in dicionarioProduct:
+        if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
             reply.message = 'Produto não existe!'         
         else: 
-            dicionarioProduct.pop(request_iterator.produtoId)
-            client.publish("ApagarProduto", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Produto apagado: " + str(dicionarioProduct))
+            deleteData(db1, str('produtoId:' + request_iterator.produtoId))
+            print("Produto apagado")
             reply.message = 'Produto apagado!'
 
         return reply
 
-    def on_message(client, userdata, message):
-        print("Produtos cadastrados: ",ast.literal_eval(message.payload.decode("utf-8")))
-        global dicionarioProduct
-        dicionarioProduct = ast.literal_eval(message.payload.decode("utf-8"))
-
-    client.loop_start()
-    client.subscribe("ModificarPedido")
-    client.subscribe("ApagarPedido")
-    client.on_message = on_message
     
 def serve():
     porta = input("Digite uma porta para abrir o servidor: ")
