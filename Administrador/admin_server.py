@@ -32,16 +32,18 @@ def getData(db, chave):
     respBytes = db.get(chaveBytes)
     resp = None if not respBytes else respBytes.decode()
     return resp
+
+def deleteData(db, chave):
+    chaveBytes = bytes(chave, 'utf-8')
+    db.delete(chaveBytes)
 class AdminServicer(admin_pb2_grpc.AdminServicer):  
     def inserirCliente(self, request_iterator, context):
-        global dicionarioClient
         db1,db2,db3 = startDatabase()
         print("Inserir Cliente")
         reply = admin_pb2.inserirClienteReply()
         if getData(db1, str('clientId:' + request_iterator.clientId)):
             reply.message = 'Cliente já existe!'         
         else: 
-            clientArray.append([request_iterator.clientId, request_iterator.dadosCliente])
             insertData(db1,str('clientId:' + request_iterator.clientId), request_iterator.dadosCliente)            
             resp = getData(db1, str('clientId:' + request_iterator.clientId))
             print("Inserção realizada:" + resp)
@@ -49,69 +51,69 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
 
         return reply
     def modificarCliente(self, request_iterator, context):
-        global dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Modificar Cliente")      
-        reply = admin_pb2.modificarClienteReply()
-        
-        if request_iterator.clientId not in dicionarioClient:
+        reply = admin_pb2.modificarClienteReply()        
+        if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
             reply.message = 'Cliente não existe!'         
         else: 
             novosDados = json.loads(request_iterator.dadosCliente)
             dadosCliente = {"nome": novosDados['nome'], "sobrenome": novosDados['sobrenome']}
-            dicionarioClient[request_iterator.clientId] = json.dumps(dadosCliente)
-            client.publish("ModificarCliente", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Modificação realizada: " + str(dicionarioClient))
+            insertData(db1,str('clientId:' + request_iterator.clientId), json.dumps(dadosCliente))
+            resp = getData(db1, str('clientId:' + request_iterator.clientId))
+            print("Modificação realizada: " + resp)
             reply.message = 'Cliente modificado!'
 
         return reply
     def recuperarCliente(self, request_iterator, context):
-        global dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Recuperar Cliente")
 
         reply = admin_pb2.recuperarClienteReply()
-        
-        if request_iterator.clientId not in dicionarioClient:
+
+        resp = getData(db1, str('clientId:' + request_iterator.clientId))
+
+        if resp == None:
             reply.message = 'Cliente não existe!'         
         else: 
-            dadosCliente = json.loads(dicionarioClient[request_iterator.clientId])
+            dadosCliente = json.loads(resp)
             reply.message = f"Cliente recuperado:\nNome - {dadosCliente['nome']}\nSobrenome - {dadosCliente['sobrenome']}"
 
         return reply
     def apagarCliente(self, request_iterator, context):
-        global dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Apagar Cliente")
 
         reply = admin_pb2.apagarClienteReply()
         
-        if request_iterator.clientId not in dicionarioClient:
+        if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
             reply.message = 'Cliente não existe!'         
         else: 
-            dicionarioClient.pop(request_iterator.clientId)
-            client.publish("ApagarCliente", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Cliente apagado realizada: " + str(dicionarioClient))
+            deleteData(db1, str('clientId:' + request_iterator.clientId))
+            print("Cliente apagado")
             reply.message = 'Cliente apagado!'
 
         return reply
     def inserirProduto(self, request_iterator, context):
-        global dicionarioProduct
+        db1,db2,db3 = startDatabase()
         print("Inserir Produto")
         reply = admin_pb2.inserirProdutoReply()
-        if request_iterator.produtoId in dicionarioProduct:
+        if getData(db1, str('produtoId:' + request_iterator.produtoId)):
             reply.message = 'Produto já existe!'         
         else: 
             productArray.append([request_iterator.produtoId, request_iterator.dadosProduto])
-            dicionarioProduct = dict(productArray)
-            client.publish("InserirProduto", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Cadastro realizado: " + str(dicionarioProduct))
+            insertData(db1,str('produtoId:' + request_iterator.produtoId), request_iterator.dadosProduto)            
+            resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
+            print("Cadastro realizada:" + resp)
             reply.message = 'Produto cadastrado!'
 
         return reply
     def modificarProduto(self, request_iterator, context):
-        global dicionarioProduct
+        db1,db2,db3 = startDatabase()
         print("Modificar Produto")      
         reply = admin_pb2.modificarProdutoReply()
         
-        if request_iterator.produtoId not in dicionarioProduct:
+        if getData(db1, str('clientId:' + request_iterator.produtoId)) == None:
             reply.message = 'Produto não existe!'         
         else: 
             novosDados = json.loads(request_iterator.dadosProduto)
