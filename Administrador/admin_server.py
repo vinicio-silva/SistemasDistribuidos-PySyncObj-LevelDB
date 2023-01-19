@@ -5,6 +5,7 @@ import admin_pb2
 import admin_pb2_grpc
 from paho.mqtt import client as mqtt
 import json
+import plyvel
 
 mqttBroker = "mqtt.eclipseprojects.io"
 client = mqtt.Client("Admin Server")
@@ -15,18 +16,35 @@ dicionarioProduct = dict()
 clientArray = []
 productArray = []
 
+def startDatabase():
+    db1 = plyvel.DB('../Banco/bancos/banco1/', create_if_missing=True)
+    db2 = plyvel.DB('../Banco/bancos/banco2/', create_if_missing=True)
+    db3 = plyvel.DB('../Banco/bancos/banco3/', create_if_missing=True)
+    return db1,db2,db3
+
+def insertData(db, chave, valor):
+    chaveBytes = bytes(chave, 'utf-8')
+    valorBytes = bytes(valor,'utf-8')
+    db.put(chaveBytes, valorBytes)
+
+def getData(db, chave):
+    chaveBytes = bytes(chave, 'utf-8')
+    respBytes = db.get(chaveBytes)
+    resp = None if not respBytes else respBytes.decode()
+    return resp
 class AdminServicer(admin_pb2_grpc.AdminServicer):  
     def inserirCliente(self, request_iterator, context):
         global dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Inserir Cliente")
         reply = admin_pb2.inserirClienteReply()
-        if request_iterator.clientId in dicionarioClient:
+        if getData(db1, str('clientId:' + request_iterator.clientId)):
             reply.message = 'Cliente já existe!'         
         else: 
             clientArray.append([request_iterator.clientId, request_iterator.dadosCliente])
-            dicionarioClient = dict(clientArray)
-            client.publish("InserirCliente", str(dicionarioClient) + '/' + str (dicionarioProduct))
-            print("Inserção realizada: " + str(dicionarioClient))
+            insertData(db1,str('clientId:' + request_iterator.clientId), request_iterator.dadosCliente)            
+            resp = getData(db1, str('clientId:' + request_iterator.clientId))
+            print("Inserção realizada:" + resp)
             reply.message = 'Cliente inserido!'
 
         return reply
