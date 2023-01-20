@@ -8,9 +8,6 @@ import client_pb2_grpc
 from paho.mqtt import client as mqtt
 import plyvel
 
-mqttBroker = "mqtt.eclipseprojects.io"
-client = mqtt.Client("Client Server")
-client.connect(mqttBroker)
 
 def startDatabase():
     db1 = plyvel.DB('../Banco/bancos/banco1/', create_if_missing=True)
@@ -29,6 +26,9 @@ def getData(db, chave):
     resp = None if not respBytes else respBytes.decode()
     return resp
 
+def deleteData(db, chave):
+    chaveBytes = bytes(chave, 'utf-8')
+    db.delete(chaveBytes)
 
 class ClientServicer(client_pb2_grpc.ClientServicer):  
     def criarPedido(self, request_iterator, context):
@@ -115,16 +115,16 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
 
         return reply
     def listarPedido(self, request_iterator, context):
-        global dicionarioPedido, dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Listar Pedido")
         reply = client_pb2.listarPedidoReply()
 
-        if request_iterator.clientId not in dicionarioClient:
+        if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
             reply.message = 'Cliente não existe!'
-        elif request_iterator.ordemId not in dicionarioPedido:
+        elif getData(db1, str('ordemId:' + request_iterator.ordemId)) == None:
             reply.message = 'Pedido não existe!'        
         else:
-            dadosPedido = json.loads(dicionarioPedido[request_iterator.ordemId])
+            dadosPedido = json.loads(getData(db1, str('ordemId:' + request_iterator.ordemId)))
             if dadosPedido['clientId'] == request_iterator.clientId:
                 reply.message = f"Pedido listado:\nProduto - {dadosPedido['produto']}\nQuantidade - {dadosPedido['quantidade']}\nTotal - {dadosPedido['total']}"
             else:
@@ -132,71 +132,59 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
 
         return reply
     def listarPedidos(self, request_iterator, context):
-        global dicionarioPedido, dicionarioClient
+        db1,db2,db3 = startDatabase()
         print("Listar Pedidos")
         reply = client_pb2.listarPedidosReply()
         
-        if request_iterator.clientId not in dicionarioClient:
+        if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
             reply.message = 'Cliente não existe!'
         else:
             pedidosObject = []
-            for ordemId in dicionarioPedido:
-                dadosPedido = ast.literal_eval(dicionarioPedido[ordemId])            
-                if dadosPedido['clientId'] == request_iterator.clientId:
-                    stringAux = f"Pedidos criados: OrdemId - {ordemId} | Total - {dadosPedido['total']}\n"
-                    pedidosObject.append(stringAux)
+            for key,value in db1:
+                chave = key.decode().split(':')
+                if chave[0] == 'ordemId':
+                    pedido = json.loads(value.decode())    
+                    if pedido['clientId'] == request_iterator.clientId:
+                        stringAux = f"Pedidos criados: OrdemId - {key.decode()} | Total - {pedido['total']}\n"
+                        pedidosObject.append(stringAux)
+            else:
+                  reply.message = "Não foram encontrados pedidos"
             if pedidosObject != []:
                 reply.message = ''.join(pedidosObject)
             else:
-                reply.message = "Não foram criados nenhum pedido com esse clientId"     
-        print("Pedidos Listados: " + str(dicionarioPedido))   
+                reply.message = "Não foram criados pedidos com esse clientId"
+             
+        print("Pedidos Listados")   
         return reply
 
     def apagarPedido(self, request_iterator, context):
         print("Apagar Pedido")
-
+        db1,db2,db3 = startDatabase()
         reply = client_pb2.apagarPedidoReply()
 
-        if request_iterator.clientId not in dicionarioClient:
+        if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
             reply.message = 'Cliente não existe!'
-        elif request_iterator.ordemId not in dicionarioPedido:
+        elif getData(db1, str('ordemId:' + request_iterator.ordemId)) == None:
             reply.message = 'Pedido não existe!'        
         else:
-            dadosPedido = json.loads(dicionarioPedido[request_iterator.ordemId])
-            if dadosPedido['clientId'] == request_iterator.clientId:
-                for produtoId in dicionarioProduct:            
-                        produto = ast.literal_eval(dicionarioProduct[produtoId])         
-                        if produto['nome'] == dadosPedido['produto']:
-                            dadosProduto = {"nome": produto['nome'], "quantidade": str(int(produto['quantidade']) + int(dadosPedido['quantidade'])), "preco": produto['preco']}
-                            dicionarioProduct[produtoId] = json.dumps(dadosProduto)
+            dadosPedido = json.loads(getData(db1, str('ordemId:' + request_iterator.ordemId)))
+            if dadosPedido["clientId"] == request_iterator.clientId: 
+                        for key,value in db1:
+                            chave = key.decode().split(':')
+                            if chave[0] == 'produtoId':           
+                                produto = json.loads(value.decode())        
+                                if produto['nome'] == dadosPedido["produto"]:
+                                    dadosProduto = {"nome": produto['nome'], "quantidade": int(produto['quantidade']) + int(dadosPedido['quantidade']), "preco": produto['preco']}
+                                    insertData(db1,str('produtoId:' + key.decode()), json.dumps(dadosProduto))
 
-                dicionarioPedido.pop(request_iterator.ordemId)
-                client.publish("ApagarPedido", str(dicionarioProduct))
-                print("Pedido apagado: " + str(dicionarioPedido))
-                reply.message = 'Pedido apagado!'
+                        deleteData(db1, str('ordemId:' + request_iterator.ordemId))
+                        print("Pedido apagado")
+                        reply.message = 'Pedido apagado!'
             else:
                 reply.message = 'Esse cliente não tem acesso a esse pedido!'
         
 
         return reply
-
-    def on_message(client, userdata, message):
-        msg = message.payload.decode("utf-8").split('/')
-        print("Cadastros existentes: ", msg[0])
-        global dicionarioClient
-        dicionarioClient = ast.literal_eval(msg[0])
-        print("Produtos cadastrados: ", msg[1])
-        global dicionarioProduct
-        dicionarioProduct = ast.literal_eval(msg[1])
-
-    client.loop_start()
-    client.subscribe("InserirCliente")
-    client.subscribe("ModificarCliente")
-    client.subscribe("ApagarCliente")
-    client.subscribe("InserirProduto")
-    client.subscribe("ModificarProduto")
-    client.subscribe("ApagarProduto")
-    client.on_message = on_message
 
 def serve():
     porta = input("Digite uma porta para abrir o servidor: ")
