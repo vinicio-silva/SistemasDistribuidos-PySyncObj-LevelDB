@@ -6,11 +6,11 @@ class Cache():
     def __init__(self):
         self.cacheHashTable = dict()
     
-    def read(self, chave):
+    def read(self, key):
         
-        if chave in self.cacheHashTable:
+        if key in self.cacheHashTable:
 
-            elem = self.cacheHashTable[chave]
+            elem = self.cacheHashTable[key]
             timestamp = int(time()) - elem['TempoDeInsercao']
 
             if timestamp < TInvalidacaoSeg:
@@ -18,7 +18,7 @@ class Cache():
 
         return None
     
-    def insert(self, chave, valor):
-
-        elem = { 'TempoDeInsercao': int(time()), 'Valor': valor }
-        self.cacheHashTable[chave] = elem
+    def insert(self, key, value):
+        
+        elem = { 'TempoDeInsercao': int(time()), 'Valor': value }
+        self.cacheHashTable[key] = elem

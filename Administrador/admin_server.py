@@ -9,60 +9,56 @@ import plyvel
 import socket
 from cache import Cache
 import sys
+import random
 
 def requestReplica (function, key, value=None):
-    global Cache, Socket
+    global CacheAux, Socket
     if (function == 'leitura'):
-        cache = Cache().read(key)
+        cache = CacheAux.read(key)
         if cache != None:
-            return {'msg': cache}
+            return {'data': cache}
     requestMsg = json.dumps({'function': function, 'key': key, 'value': json.dumps(value)})
-    Socket = socket.socket()
+    resp = None
     Socket.send(requestMsg.encode())
     resp = Socket.recv(16480)
     response = json.loads(resp.decode())
-
-    if response['msg'] == 'Operação realizada':
+    if response['msg'] == 'Operacao realizada':
         if function == 'inserir':
-            Cache.insert(key, value)
+            CacheAux.insert(key, value)
         if function == 'leitura':
-            Cache.insert(key, response['msg'])
+            if response['data'] != None:
+                CacheAux.insert(key, response['data'])
         if function == 'deletar':
-            Cache.insert(key, None)
-
+            CacheAux.insert(key, None)
     return response
 
 def validateReplica():
-    global NumReplica, Socket
-    inativas = 1
-    while True:
-        if inativas >= 3:
-            print('Replicas inativas, fechando o programa')
-            sys.exit()
-        
-        # Tenta acessar as réplicas circularmente [0,2]
-        NumReplica = (NumReplica+1)%3 # 0,1 -> 1,2 -> 2,1,0
-        deuExcept = False
+    global Socket
+    notFound = 0
+    for i in range (1,3):
         try:
-
-            # tenta conectar a nova replica
             Socket = socket.socket()
+            Socket.settimeout(0.1)
             host = socket.gethostname()
-            if NumReplica == 0:
+            if i == 1:
                 Socket.connect((host, 1050))
-            elif NumReplica == 1:
+                print('Replica ' + str(i) + ' escolhida!')
+                break
+            if i == 2:
                 Socket.connect((host, 1060))
-            else:
+                print('Replica ' + str(i) + ' escolhida!')
+                break
+            if i == 3:
                 Socket.connect((host, 1070))
-            print('Replica ' + str(NumReplica) + ' escolhida!')
+                print('Replica ' + str(i) + ' escolhida!')
+                break            
 
-        except BaseException as e:
-            deuExcept = True
-
-        if not deuExcept:
-            break
-
-        inativas = inativas+1
+        except BaseException as e:     
+            notFound = notFound+1
+    
+    if notFound >= 2:
+        print('Replicas indisponiveis, fechando o programa')
+        sys.exit()
 class AdminServicer(admin_pb2_grpc.AdminServicer):  
     def inserirCliente(self, request_iterator, context):        
         print("Inserir Cliente")
@@ -70,13 +66,13 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
         key = str('clientId:' + request_iterator.clientId)
         value = request_iterator.dadosCliente
         resp = requestReplica('leitura', key)
-        if resp != None:
-             reply.message = 'Cliente já existe!'         
+        if resp['data'] != None:
+            reply.message = 'Cliente já existe!'         
         else: 
             resp2 = requestReplica('inserir', key, value)
-            if resp2['msg'] == 'Operação realizada':
-                print("Operação realizada")
-            reply.message = 'Cliente inserido!'
+            if resp2['msg'] == 'Operacao realizada':
+                print("Operacao realizada")
+                reply.message = 'Cliente inserido!'
 
         return reply
     # def modificarCliente(self, request_iterator, context):
@@ -94,21 +90,19 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
     #         reply.message = 'Cliente modificado!'
 
     #     return reply
-    # def recuperarCliente(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Recuperar Cliente")
+    def recuperarCliente(self, request_iterator, context):
+        print("Recuperar Cliente")
+        reply = admin_pb2.recuperarClienteReply()
+        key = str('clientId:' + request_iterator.clientId)
+        resp = requestReplica('leitura', key)
 
-    #     reply = admin_pb2.recuperarClienteReply()
+        if resp['data'] == None:
+            reply.message = 'Cliente não existe!'         
+        else: 
+            dadosCliente = resp['data']
+            reply.message = "Cliente recuperado:" + dadosCliente
 
-    #     resp = getData(db1, str('clientId:' + request_iterator.clientId))
-
-    #     if resp == None:
-    #         reply.message = 'Cliente não existe!'         
-    #     else: 
-    #         dadosCliente = json.loads(resp)
-    #         reply.message = f"Cliente recuperado:\nNome - {dadosCliente['nome']}\nSobrenome - {dadosCliente['sobrenome']}"
-
-    #     return reply
+        return reply
     # def apagarCliente(self, request_iterator, context):
     #     db1,db2,db3 = startDatabase()
     #     print("Apagar Cliente")
@@ -192,7 +186,7 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == "__main__":
+    CacheAux = Cache()
     Socket = None
-    NumReplica = 0
     validateReplica()
     serve()
