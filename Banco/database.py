@@ -33,6 +33,21 @@ class Banco(SyncObj):
         resp = None if not respBytes else respBytes.decode()
         db.close()
         return resp
+    
+    def getMultipeData(self, key, value):
+        db = plyvel.DB(self.banco, create_if_missing=True)
+        object = []        
+        val = value.replace('"','')
+        for index, item in db:
+            chave = index.decode()
+            chaveValue = chave.split(':')[1]
+            if val in chave:
+                dados =  json.loads(item.decode())
+                valueSplit = key.split(':')[1]
+                if dados != None and dados['clientId'] == str(valueSplit):
+                    object.append([{'Ordem Id': chaveValue,'Dados': dados}])
+        db.close()
+        return object
 
 class Setup():
     
@@ -73,6 +88,9 @@ class Setup():
             if functionName == 'leitura':
                 response = self.replica.getData(key)
                 resp = json.dumps({'msg': "Operacao realizada", 'data': response})
+            if functionName == 'leituraMultipla':
+                response = self.replica.getMultipeData(key, value)
+                resp = json.dumps({'msg': "Operacao realizada", 'data': response})   
             if functionName == 'deletar':
                 self.replica.deleteData(key)
                 resp = json.dumps({'msg': "Operacao realizada"})

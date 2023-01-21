@@ -5,7 +5,6 @@ import admin_pb2
 import admin_pb2_grpc
 from paho.mqtt import client as mqtt
 import json
-import plyvel
 import socket
 from cache import Cache
 import sys
@@ -17,7 +16,7 @@ def requestReplica (function, key, value=None):
         cache = CacheAux.read(key)
         if cache != None:
             return {'data': cache}
-    requestMsg = json.dumps({'function': function, 'key': key, 'value': json.dumps(value)})
+    requestMsg = json.dumps({'function': function, 'key': key,  'value': json.dumps(value)})
     resp = None
     Socket.send(requestMsg.encode())
     resp = Socket.recv(16480)
