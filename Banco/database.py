@@ -73,9 +73,7 @@ class Setup():
                 self.replica.insertData(key,value)
                 resp = json.dumps({'msg': "Operacao realizada"})
             if functionName == 'leitura':
-                print(key)
                 response = self.replica.getData(key)
-                print(response)
                 resp = json.dumps({'msg': "Operacao realizada", 'data': response})
                 
             if functionName == 'deletar':

@@ -22,14 +22,14 @@ def requestReplica (function, key, value=None):
     Socket.send(requestMsg.encode())
     resp = Socket.recv(16480)
     response = json.loads(resp.decode())
-    if response['msg'] == 'Operacao realizada':
-        if function == 'inserir':
-            CacheAux.insert(key, value)
-        if function == 'leitura':
-            if response['data'] != None:
-                CacheAux.insert(key, response['data'])
-        if function == 'deletar':
-            CacheAux.insert(key, None)
+
+    if function == 'inserir':
+        CacheAux.insert(key, value)
+    if function == 'leitura':
+        if response['data'] != None:
+            CacheAux.insert(key, response['data'])
+    if function == 'deletar':
+        CacheAux.insert(key, None)
     return response
 
 def validateReplica():
