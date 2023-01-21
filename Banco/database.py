@@ -6,8 +6,6 @@ from pysyncobj import SyncObj, SyncObjConf, replicated
 import socket
 import threading
 import json
-
-
 class Banco(SyncObj):
     def __init__(self, porta, primaria, secundaria):
         super(Banco, self).__init__(primaria, secundaria)
@@ -70,14 +68,13 @@ class Setup():
                 value = responseMsg['value']
                 
             if functionName == 'inserir':
-                self.replica.insertData(key,value)
+                self.replica.insertData(key, value)
                 resp = json.dumps({'msg': "Operacao realizada"})
             if functionName == 'leitura':
                 response = self.replica.getData(key)
                 resp = json.dumps({'msg': "Operacao realizada", 'data': response})
-                
             if functionName == 'deletar':
-                self.replica.deleteData()
+                self.replica.deleteData(key)
                 resp = json.dumps({'msg': "Operacao realizada"})
 
             conn.send(resp.encode())

@@ -35,10 +35,11 @@ def requestReplica (function, key, value=None):
 def validateReplica():
     global Socket
     notFound = 0
-    for i in range (1,3):
+    while (True):
+        i = random.randint(1,3)
         try:
             Socket = socket.socket()
-            Socket.settimeout(0.1)
+            Socket.settimeout(1)
             host = socket.gethostname()
             if i == 1:
                 Socket.connect((host, 1050))
@@ -56,9 +57,9 @@ def validateReplica():
         except BaseException as e:     
             notFound = notFound+1
     
-    if notFound >= 2:
-        print('Replicas indisponiveis, fechando o programa')
-        sys.exit()
+        if notFound >= 10:
+            print('Replicas indisponiveis, fechando o programa')
+            sys.exit()
 class AdminServicer(admin_pb2_grpc.AdminServicer):  
     def inserirCliente(self, request_iterator, context):        
         print("Inserir Cliente")
@@ -69,27 +70,27 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
         if resp['data'] != None:
             reply.message = 'Cliente já existe!'         
         else: 
-            resp2 = requestReplica('inserir', key, value)
-            if resp2['msg'] == 'Operacao realizada':
-                print("Operacao realizada")
-                reply.message = 'Cliente inserido!'
+            requestReplica('inserir', key, value)
+            reply.message = 'Cliente inserido!'
 
         return reply
-    # def modificarCliente(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Modificar Cliente")      
-    #     reply = admin_pb2.modificarClienteReply()        
-    #     if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
-    #         reply.message = 'Cliente não existe!'         
-    #     else: 
-    #         novosDados = json.loads(request_iterator.dadosCliente)
-    #         dadosCliente = {"nome": novosDados['nome'], "sobrenome": novosDados['sobrenome']}
-    #         insertData(db1,str('clientId:' + request_iterator.clientId), json.dumps(dadosCliente))
-    #         resp = getData(db1, str('clientId:' + request_iterator.clientId))
-    #         print("Modificação realizada: " + resp)
-    #         reply.message = 'Cliente modificado!'
+    def modificarCliente(self, request_iterator, context):
+        print("Modificar Cliente")
+        reply = admin_pb2.modificarClienteReply()
+        key = str('clientId:' + request_iterator.clientId)
+        value = request_iterator.dadosCliente
+        resp = requestReplica('leitura', key)
+        if resp['data'] == None:
+            reply.message = 'Cliente não existe!'
+        else:
+            requestReplica('deletar', key)
+            requestReplica('inserir', key, value)
+            resp = requestReplica('leitura',key)
+            print("Modificação realizada:")
+            print(resp)
+            reply.message = 'Cliente modificado!'
 
-    #     return reply
+        return reply
     def recuperarCliente(self, request_iterator, context):
         print("Recuperar Cliente")
         reply = admin_pb2.recuperarClienteReply()
@@ -103,78 +104,73 @@ class AdminServicer(admin_pb2_grpc.AdminServicer):
             reply.message = "Cliente recuperado:" + dadosCliente
 
         return reply
-    # def apagarCliente(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Apagar Cliente")
+    def apagarCliente(self, request_iterator, context):
+        print("Apagar Cliente")
+        reply = admin_pb2.apagarClienteReply()
+        key = str('clientId:' + request_iterator.clientId)
+        resp = requestReplica('leitura', key)
+        if resp['data'] == None:
+            reply.message = 'Cliente não existe!'
+        else: 
+            requestReplica('deletar', key)
+            reply.message = 'Cliente deletado!'
 
-    #     reply = admin_pb2.apagarClienteReply()
-        
-    #     if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
-    #         reply.message = 'Cliente não existe!'         
-    #     else: 
-    #         deleteData(db1, str('clientId:' + request_iterator.clientId))
-    #         print("Cliente apagado")
-    #         reply.message = 'Cliente apagado!'
+        return reply
+    def inserirProduto(self, request_iterator, context):
+        print("Inserir Produto")
+        reply = admin_pb2.inserirProdutoReply()
+        key = str('produtoId:' + request_iterator.produtoId)
+        value = request_iterator.dadosProduto
+        resp = requestReplica('leitura', key)
+        if resp['data'] != None:
+            reply.message = 'Produto já existe!'         
+        else: 
+            requestReplica('inserir', key, value)
+            reply.message = 'Produto inserido!'
 
-    #     return reply
-    # def inserirProduto(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Inserir Produto")
-    #     reply = admin_pb2.inserirProdutoReply()
-    #     if getData(db1, str('produtoId:' + request_iterator.produtoId)):
-    #         reply.message = 'Produto já existe!'         
-    #     else: 
-    #         insertData(db1,str('produtoId:' + request_iterator.produtoId), request_iterator.dadosProduto)            
-    #         resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
-    #         print("Cadastro realizada:" + resp)
-    #         reply.message = 'Produto cadastrado!'
+        return reply
+    def modificarProduto(self, request_iterator, context):
+        print("Modificar Produto")
+        reply = admin_pb2.modificarProdutoReply()
+        key = str('produtoId:' + request_iterator.produtoId)
+        value = request_iterator.dadosProduto
+        resp = requestReplica('leitura', key)
+        if resp['data'] == None:
+            reply.message = 'Produto não existe!'
+        else:
+            requestReplica('deletar', key)
+            requestReplica('inserir', key, value)
+            resp = requestReplica('leitura',key)
+            print("Modificação realizada:")
+            print(resp)
+            reply.message = 'Produto modificado!'
 
-    #     return reply
-    # def modificarProduto(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Modificar Produto")      
-    #     reply = admin_pb2.modificarProdutoReply()
-        
-    #     if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
-    #         reply.message = 'Produto não existe!'         
-    #     else: 
-    #         novosDados = json.loads(request_iterator.dadosProduto)
-    #         dadosProduto = {"nome": novosDados['nome'], "quantidade": novosDados['quantidade'], "preco": novosDados['preco']}
-    #         insertData(db1,str('produtoId:' + request_iterator.produtoId), json.dumps(dadosProduto))            
-    #         resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
-    #         print("Modificação realizada:" + resp)
-    #         reply.message = 'Produto modificado!'
+        return reply
+    def recuperarProduto(self, request_iterator, context):
+        print("Recuperar Produto")
+        reply = admin_pb2.recuperarProdutoReply()
+        key = str('produtoId:' + request_iterator.produtoId)
+        resp = requestReplica('leitura', key)
 
-    #     return reply
-    # def recuperarProduto(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Recuperar Produto")
+        if resp['data'] == None:
+            reply.message = 'Produto não existe!'         
+        else: 
+            dadosProduto = resp['data']
+            reply.message = "Produto recuperado:" + dadosProduto
 
-    #     reply = admin_pb2.recuperarProdutoReply()
-        
-    #     if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
-    #         reply.message = 'Produto não existe!'         
-    #     else: 
-    #         resp = getData(db1, str('produtoId:' + request_iterator.produtoId))
-    #         print("Recuperação realizada:" + resp)
-    #         dadosProduto = json.loads(resp)
-    #         reply.message = f"Produto recuperado:\nNome - {dadosProduto['nome']}\nQuantidade - {dadosProduto['quantidade']}\nPreço - {dadosProduto['preco']}"
+        return reply
+    def apagarProduto(self, request_iterator, context):
+        print("Apagar Produto")
+        reply = admin_pb2.apagarProdutoReply()
+        key = str('produtoId:' + request_iterator.produtoId)
+        resp = requestReplica('leitura', key)
+        if resp['data'] == None:
+            reply.message = 'Produto não existe!'
+        else: 
+            requestReplica('deletar', key)
+            reply.message = 'Produto deletado!'
 
-    #     return reply
-    # def apagarProduto(self, request_iterator, context):
-    #     db1,db2,db3 = startDatabase()
-    #     print("Apagar Produto")
-
-    #     reply = admin_pb2.apagarProdutoReply()
-        
-    #     if getData(db1, str('produtoId:' + request_iterator.produtoId)) == None:
-    #         reply.message = 'Produto não existe!'         
-    #     else: 
-    #         deleteData(db1, str('produtoId:' + request_iterator.produtoId))
-    #         print("Produto apagado")
-    #         reply.message = 'Produto apagado!'
-
-    #     return reply
+        return reply 
 
     
 def serve():
