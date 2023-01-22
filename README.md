@@ -12,10 +12,10 @@ pip install plyvel-wheels
 # Execução
 
 ## Iniciar as réplicas
-cd ./Banco
-Terminal 1 - python database.py 1
-Terminal 2 - python database.py 2
-Terminal 3 - python database.py 3
+cd ./Banco<br>
+Terminal 1 - python database.py 1<br>
+Terminal 2 - python database.py 2<br>
+Terminal 3 - python database.py 3<br>
 
 ## Iniciar os clientes
 
