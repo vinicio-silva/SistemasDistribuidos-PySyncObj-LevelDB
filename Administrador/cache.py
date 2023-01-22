@@ -2,7 +2,7 @@ from collections import OrderedDict
 from time import time
 
 
-Temporizador = 120
+Temporizador = 30
 
 class Cache():
 

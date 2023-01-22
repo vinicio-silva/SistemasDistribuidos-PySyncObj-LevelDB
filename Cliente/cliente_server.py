@@ -14,7 +14,7 @@ def requestReplica (function, key, value=None):
         cache = CacheAux.read(key)
         if cache != None:
             return {'data': cache}
-    requestMsg = json.dumps({'function': function, 'key': key, 'value': json.dumps(value)})
+    requestMsg = json.dumps({'function': function, 'key': key, 'value': value})
     resp = None
     Socket.send(requestMsg.encode())
     resp = Socket.recv(16480)
@@ -27,6 +27,7 @@ def requestReplica (function, key, value=None):
             CacheAux.insert(key, response['data'])
     if function == 'deletar':
         CacheAux.insert(key, None)
+        print('Cache: deletado', key)
     return response
 
 def validateReplica():
@@ -58,6 +59,7 @@ def validateReplica():
             print('Replicas indisponiveis, fechando o programa')
             sys.exit()
 class ClientServicer(client_pb2_grpc.ClientServicer):  
+
     def criarPedido(self, request_iterator, context):        
         print("Criar Pedido")
         reply = client_pb2.criarPedidoReply()
@@ -73,76 +75,77 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
                 resp = requestReplica('leitura', str(ordemId))
             key = str('ordemId:' + str(ordemId))
             value = {'clientId':  str(request_iterator.clientId), 'produto': '', 'quantidade': '0', 'total': '0'}
-            requestReplica('inserir', key, value)
+            requestReplica('inserir', key, json.dumps(value))
             reply.message =  f'Sua ordem do pedido é:{ordemId}'
 
         return reply
-    # def modificarPedido(self, request_iterator, context):
-    #     reply = client_pb2.modificarPedidoReply()
-    #     db1,db2,db3 = startDatabase()
-    #     if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
-    #         reply.message = 'Cliente não existe!'
-    #     elif getData(db1, str('ordemId:' + request_iterator.ordemId)) == None:
-    #         reply.message = 'Ordem de pedido não existe!'        
-    #     else:
-    #         dadosPedido = json.loads(getData(db1, str('ordemId:' + request_iterator.ordemId)))
-    #         if getData(db1, str('clientId:' + request_iterator.clientId)):     
-    #             for key,value in db1:
-    #                 chave = key.decode().split(':')
-    #                 if chave[0] == 'produtoId':
-    #                     produto = json.loads(value.decode())
-    #                     if produto['nome'] == request_iterator.produto:
-    #                         if request_iterator.quantidade == 0:
-    #                             dadosProduto = {"nome": produto['nome'], "quantidade": produto['quantidade'], "preco": produto['preco']}
-    #                             insertData(db1,str('produtoId:' + key.decode()), json.dumps(dadosProduto))
-    #                             dadosPedido = {'clientId':  str(request_iterator.clientId), 'produto': '','quantidade': '0', 'total': '0'}
-    #                             insertData(db1, str('ordemId:' + request_iterator.ordemId), json.dumps(dadosPedido))
-    #                             res = getData(db1, str('ordemId:' + request_iterator.ordemId))
-    #                             res2 = getData(db1, str('produtoId:' + key.decode()))
-    #                             print("Modificação realizada no pedido: " + res)
-    #                             print("Modificação realizada no produto: " + res2)
-    #                             reply.message = 'Pedido modificado!'
-    #                             break
-    #                         elif request_iterator.quantidade < 0:
-    #                             reply.message = 'Digite uma quantidade maior ou igual a 0!'
-    #                             break                                
-    #                         elif int(produto['quantidade']) < request_iterator.quantidade:  
-    #                             reply.message = 'Quantidade do produto insuficiente!'
-    #                             break
-    #                         else:
-    #                             if request_iterator.quantidade < int(dadosPedido['quantidade']):                     
-    #                                 dadosProduto = {"nome": produto['nome'], "quantidade": produto['quantidade'] - request_iterator.quantidade, "preco": produto['preco']} 
-    #                                 insertData(db1,str('produtoId:' + key.decode()), json.dumps(dadosProduto))
-    #                                 dadosPedido = {'clientId':  str(request_iterator.clientId), 'produto': produto['nome'],'quantidade': request_iterator.quantidade, 'total': str(produto['preco']*request_iterator.quantidade)}
-    #                                 insertData(db1, str('ordemId:' + request_iterator.ordemId), json.dumps(dadosPedido))
-    #                                 res = getData(db1, str('ordemId:' + request_iterator.ordemId))
-    #                                 res2 = getData(db1, str('produtoId:' + key.decode()))
-    #                                 print("Modificação realizada no pedido: " + res)
-    #                                 print("Modificação realizada no produto: " + res2)
-    #                             elif request_iterator.quantidade > int(dadosPedido['quantidade']):                                  
-    #                                 dadosProduto = {"nome": produto['nome'], "quantidade": produto['quantidade'] - request_iterator.quantidade, "preco": produto['preco']}
-    #                                 insertData(db1,str('produtoId:' + key.decode()), json.dumps(dadosProduto))
-    #                                 dadosPedido = {'clientId':  str(request_iterator.clientId), 'produto': produto['nome'],'quantidade': request_iterator.quantidade, 'total': str(produto['preco']*request_iterator.quantidade)}
-    #                                 insertData(db1, str('ordemId:' + request_iterator.ordemId), json.dumps(dadosPedido))
-    #                                 res = getData(db1, str('ordemId:' + request_iterator.ordemId))
-    #                                 res2 = getData(db1, str('produtoId:' + key.decode()))
-    #                                 print("Modificação realizada no pedido: " + res)
-    #                                 print("Modificação realizada no produto: " + res2)
-    #                                 reply.message = 'Pedido modificado!'
-    #                                 break
-    #                             else: 
-    #                                 reply.message = "Mesma quantidade do pedido"
-    #                                 break
 
-                               
-    #                 else:
-    #                     continue
-    #             else:
-    #                 reply.message = 'Produto não cadastrado!'                    
-    #         else:
-    #             reply.message = 'Esse cliente não tem acesso a esse pedido!'
+    def modificarPedido(self, request_iterator, context):
+        print("Modificar Pedido")
+        reply = client_pb2.modificarPedidoReply()
+        key = str('clientId:' + request_iterator.clientId)
+        resp = requestReplica('leitura', key)
+        key2 = str('ordemId:' + request_iterator.ordemId)
+        resp2 = requestReplica('leitura', key2)
+        key3 = str('produtoId:' + str(request_iterator.produto))
+        resp3 = requestReplica('leitura', key3)
+        if resp['data'] == None:
+            reply.message = 'Cliente não existe!'
+        elif resp2['data'] == None:
+            reply.message = 'Pedido não existe!'        
+        elif resp3['data'] == None:
+            reply.message = 'Produto não existe!'
+        else:
+            dadosPedido = resp2['data']
+            dadosPedido2 = json.loads(dadosPedido)
+            dadosProduto = resp3['data']
+            dadosProduto2 = json.loads(dadosProduto)
+            if dadosPedido2["clientId"] != request_iterator.clientId:
+                reply.message = 'Esse cliente não tem acesso a esse pedido!'
+            else:
+                if request_iterator.quantidade == 0:
+                    requestReplica('deletar', key3)
+                    value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto['quantidade']) + int(dadosPedido['quantidade'])), "preco": dadosProduto2['preco']}
+                    requestReplica('inserir', key3, json.dumps(value))
+                    print("Produto atualizado!")
 
-    #     return reply
+                    requestReplica('deletar', key2)
+                    value = {'clientId':  str(request_iterator.clientId), 'produto': str(request_iterator.produto), 'quantidade': request_iterator.quantidade, 'total': str(int(request_iterator.quantidade) * int(dadosProduto2['preco'])) }
+                    requestReplica('inserir', key2, json.dumps(value))                   
+                    reply.message = 'Pedido modificado!'
+                
+                elif request_iterator.quantidade >= int(dadosProduto2['quantidade']):
+                    requestReplica('deletar', key3)
+                    text = requestReplica('leitura', key3)
+                    print(text)
+                    value = {"nome": dadosProduto2['nome'], "quantidade":'', "preco": dadosProduto2['preco']}
+                    requestReplica('inserir', key3, json.dumps(value))
+                    print("Produto atualizado!")
+
+                    requestReplica('deletar', key2)
+                    value = {'clientId':  str(request_iterator.clientId), 'produto': str(request_iterator.produto), 'quantidade': dadosProduto2['quantidade'], 'total': str(int(dadosProduto2['quantidade']) * int(dadosProduto2['preco'])) }
+                    requestReplica('inserir', key2, json.dumps(value))                   
+                    reply.message = 'Pedido modificado!'
+
+                elif request_iterator.quantidade < 0:
+                    reply.message = "Insira uma quantidade maior que 0!"    
+                else:
+                    requestReplica('deletar', key3)
+                    if request_iterator.quantidade > int(dadosPedido2['quantidade']):
+                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade'] - (request_iterator.quantidade - int(dadosPedido2['quantidade'])))), "preco": dadosProduto2['preco']}
+                        requestReplica('inserir', key3, json.dumps(value))
+                        print("Produto atualizado!")
+                    else:
+                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade'] + (int(dadosPedido2['quantidade']) - request_iterator.quantidade))), "preco": dadosProduto2['preco']}
+                        requestReplica('inserir', key3, json.dumps(value))
+                        print("Produto atualizado!")
+
+                    requestReplica('deletar', key2)
+                    value = {'clientId':  str(request_iterator.clientId), 'produto': str(request_iterator.produto), 'quantidade': request_iterator.quantidade, 'total': str(request_iterator.quantidade * int(dadosProduto2['preco'])) }
+                    requestReplica('inserir', key2, json.dumps(value))                   
+                    reply.message = 'Pedido modificado!'         
+        return reply
+
     def listarPedido(self, request_iterator, context):
         print("Listar Pedido")
         reply = client_pb2.listarPedidoReply()
@@ -154,9 +157,10 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
             reply.message = 'Cliente não existe!'             
         elif resp2['data'] == None:
             reply.message = 'Pedido não existe!'         
-        else: 
+        else:
+            print(resp2['data'])
             dadosPedido = json.loads(resp2['data'])
-            reply.message = f"Pedido listado:\nProduto - {dadosPedido['produto']}\nQuantidade - {dadosPedido['quantidade']}\nTotal - {dadosPedido['total']}"
+            reply.message = f"Pedido listado:\nProdutoId - {dadosPedido['produto']}\nQuantidade - {dadosPedido['quantidade']}\nTotal - {dadosPedido['total']}"
 
         return reply
     def listarPedidos(self, request_iterator, context):
@@ -181,34 +185,35 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
                 reply.message = "Não foram criados pedidos com esse cliente"
         return reply    
 
-    # def apagarPedido(self, request_iterator, context):
-    #     print("Apagar Pedido")
-    #     db1,db2,db3 = startDatabase()
-    #     reply = client_pb2.apagarPedidoReply()
-
-    #     if getData(db1, str('clientId:' + request_iterator.clientId)) == None:
-    #         reply.message = 'Cliente não existe!'
-    #     elif getData(db1, str('ordemId:' + request_iterator.ordemId)) == None:
-    #         reply.message = 'Pedido não existe!'        
-    #     else:
-    #         dadosPedido = json.loads(getData(db1, str('ordemId:' + request_iterator.ordemId)))
-    #         if dadosPedido["clientId"] == request_iterator.clientId: 
-    #                     for key,value in db1:
-    #                         chave = key.decode().split(':')
-    #                         if chave[0] == 'produtoId':           
-    #                             produto = json.loads(value.decode())        
-    #                             if produto['nome'] == dadosPedido["produto"]:
-    #                                 dadosProduto = {"nome": produto['nome'], "quantidade": int(produto['quantidade']) + int(dadosPedido['quantidade']), "preco": produto['preco']}
-    #                                 insertData(db1,str('produtoId:' + key.decode()), json.dumps(dadosProduto))
-
-    #                     deleteData(db1, str('ordemId:' + request_iterator.ordemId))
-    #                     print("Pedido apagado")
-    #                     reply.message = 'Pedido apagado!'
-    #         else:
-    #             reply.message = 'Esse cliente não tem acesso a esse pedido!'
+    def apagarPedido(self, request_iterator, context):
+        print("Apagar Pedido")
+        reply = client_pb2.apagarPedidoReply()
+        key = str('clientId:' + request_iterator.clientId)
+        resp = requestReplica('leitura', key)
+        key2 = str('ordemId:' + request_iterator.ordemId)
+        resp2 = requestReplica('leitura', key2)
+        if resp['data'] == None:
+            reply.message = 'Cliente não existe!'
+        elif resp2['data'] == None:
+            reply.message = 'Pedido não existe!'        
+        else:
+            dadosPedido = (resp2['data'])
+            dadosPedido = json.loads(dadosPedido)
+            key3 = str('produtoId:' + str(dadosPedido['produto']))
+            resp3 = requestReplica('leitura', key3)
+            dadosProduto = json.loads(resp3['data'])
+            if dadosPedido["clientId"] == request_iterator.clientId:
+                requestReplica('deletar', key2)
+                if resp3['data'] != None:
+                   requestReplica('deletar', key3)
+                   value = {"nome": dadosProduto['nome'], "quantidade": str(int(dadosProduto['quantidade']) + int(dadosPedido['quantidade'])), "preco": dadosProduto['preco']}
+                   requestReplica('inserir', key3, json.dumps(value))
+                print("Pedido apagado")
+                reply.message = 'Pedido apagado!'
+            else:
+               reply.message = 'Esse cliente não tem acesso a esse pedido!'
         
-
-    #     return reply
+        return reply
 
 def serve():
     porta = input("Digite uma porta para abrir o servidor: ")

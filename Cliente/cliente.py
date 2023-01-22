@@ -25,7 +25,7 @@ def run():
             elif rpc_call == "2":
                 clientId = input("Digite o ID fornecido pelo Administrador:")
                 ordemId = input("Digite a ordem do seu pedido:")
-                produto = input("Digite o nome do produto:")
+                produto = input("Digite o ID do produto:")
                 quantidade = int(input("Digite a quantidade do produto:"))
                 request = client_pb2.modificarPedidoRequest(clientId = clientId, ordemId = ordemId, produto = produto, quantidade = quantidade)
                 reply = stub.modificarPedido(request)

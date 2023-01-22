@@ -16,7 +16,7 @@ def requestReplica (function, key, value=None):
         cache = CacheAux.read(key)
         if cache != None:
             return {'data': cache}
-    requestMsg = json.dumps({'function': function, 'key': key,  'value': json.dumps(value)})
+    requestMsg = json.dumps({'function': function, 'key': key,  'value': value})
     resp = None
     Socket.send(requestMsg.encode())
     resp = Socket.recv(16480)
