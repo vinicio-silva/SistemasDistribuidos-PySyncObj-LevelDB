@@ -27,7 +27,6 @@ def requestReplica (function, key, value=None):
             CacheAux.insert(key, response['data'])
     if function == 'deletar':
         CacheAux.insert(key, None)
-        print('Cache: deletado', key)
     return response
 
 def validateReplica():
@@ -104,8 +103,10 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
                 reply.message = 'Esse cliente não tem acesso a esse pedido!'
             else:
                 if request_iterator.quantidade == 0:
+                    print(dadosProduto2)
+                    print(dadosPedido)
                     requestReplica('deletar', key3)
-                    value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto['quantidade']) + int(dadosPedido['quantidade'])), "preco": dadosProduto2['preco']}
+                    value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade']) + int(dadosPedido2['quantidade'])), "preco": dadosProduto2['preco']}
                     requestReplica('inserir', key3, json.dumps(value))
                     print("Produto atualizado!")
 
@@ -118,7 +119,7 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
                     requestReplica('deletar', key3)
                     text = requestReplica('leitura', key3)
                     print(text)
-                    value = {"nome": dadosProduto2['nome'], "quantidade":'', "preco": dadosProduto2['preco']}
+                    value = {"nome": dadosProduto2['nome'], "quantidade":'0', "preco": dadosProduto2['preco']}
                     requestReplica('inserir', key3, json.dumps(value))
                     print("Produto atualizado!")
 
@@ -132,11 +133,11 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
                 else:
                     requestReplica('deletar', key3)
                     if request_iterator.quantidade > int(dadosPedido2['quantidade']):
-                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade'] - (request_iterator.quantidade - int(dadosPedido2['quantidade'])))), "preco": dadosProduto2['preco']}
+                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade']) - (request_iterator.quantidade - int(dadosPedido2['quantidade']))), "preco": dadosProduto2['preco']}
                         requestReplica('inserir', key3, json.dumps(value))
                         print("Produto atualizado!")
                     else:
-                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade'] + (int(dadosPedido2['quantidade']) - request_iterator.quantidade))), "preco": dadosProduto2['preco']}
+                        value = {"nome": dadosProduto2['nome'], "quantidade":str(int(dadosProduto2['quantidade']) + (int(dadosPedido2['quantidade']) - request_iterator.quantidade)), "preco": dadosProduto2['preco']}
                         requestReplica('inserir', key3, json.dumps(value))
                         print("Produto atualizado!")
 
