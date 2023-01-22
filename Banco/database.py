@@ -51,15 +51,15 @@ class Banco(SyncObj):
 
 class Setup():
     
-    def __init__(self, number):
+    def __init__(self, arg):
                 
-        if number == 1:
+        if arg == 1:
             self.portaSocket = 1050
             self.replica = Banco(self.portaSocket,'localhost:1000',['localhost:1100', 'localhost:1200'])
-        if number == 2:
+        if arg == 2:
             self.portaSocket = 1060
             self.replica = Banco(self.portaSocket,'localhost:1100',['localhost:1000', 'localhost:1200'])
-        if number == 3:
+        if arg == 3:
             self.portaSocket = 1070
             self.replica = Banco(self.portaSocket,'localhost:1200',['localhost:1100', 'localhost:1000'])
 
@@ -101,12 +101,12 @@ def main():
     if len(sys.argv) < 2:
         sys.exit(-1)
 
-    number = int(sys.argv[1])
+    arg = int(sys.argv[1])
 
-    if number != 1 and number != 2 and number != 3:
-        print("Número deve ser 1, 2 ou 3")
+    if arg != 1 and arg != 2 and arg != 3:
+        print("Valor do argumento deve ser 1, 2 ou 3")
     else:
-        replica = Setup(number)
+        replica = Setup(arg)
         replica.socket()
 
 if __name__ == '__main__':

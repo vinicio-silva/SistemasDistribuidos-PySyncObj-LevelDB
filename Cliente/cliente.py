@@ -1,6 +1,5 @@
 import client_pb2_grpc
 import client_pb2
-import time
 import grpc
 
 def run():
