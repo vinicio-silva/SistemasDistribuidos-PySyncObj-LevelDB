@@ -2,7 +2,7 @@ from __future__ import print_function
 import plyvel
 import sys
 sys.path.append("../")
-from pysyncobj import SyncObj, SyncObjConf, replicated
+from pysyncobj import SyncObj, replicated
 import socket
 import threading
 import json

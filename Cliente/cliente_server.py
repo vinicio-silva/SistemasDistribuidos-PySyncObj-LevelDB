@@ -166,7 +166,6 @@ class ClientServicer(client_pb2_grpc.ClientServicer):
     def listarPedidos(self, request_iterator, context):
         print("Listar Pedidos")
         reply = client_pb2.listarPedidosReply()
-        reply = client_pb2.listarPedidoReply()
         key = str('clientId:' + request_iterator.clientId)
         resp = requestReplica('leitura', key)
         if resp['data'] == None:

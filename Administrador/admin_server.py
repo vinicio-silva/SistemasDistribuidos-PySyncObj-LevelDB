@@ -3,7 +3,6 @@ from concurrent import futures
 import grpc
 import admin_pb2
 import admin_pb2_grpc
-from paho.mqtt import client as mqtt
 import json
 import socket
 from cache import Cache
